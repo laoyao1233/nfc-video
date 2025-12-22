@@ -3,62 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>视频播放</title>
+    <title>Video Player</title>
     <style>
-        body, html {
-            margin: 0; padding: 0; width: 100%; height: 100%;
-            background-color: #000;
-            display: flex; justify-content: center; align-items: center;
-        }
-        video {
-            width: 100%; height: auto; max-height: 100%;
-            object-fit: contain;
-        }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; display: flex; align-items: center; justify-content: center; }
+        video { width: 100%; height: auto; max-height: 100%; }
     </style>
 </head>
 <body>
-
-    <video 
-        id="player" 
-        controls 
-        playsinline 
-        webkit-playsinline 
-        autoplay 
-        muted
-        style="display:none;">
-    </video>
+    <video id="player" controls playsinline webkit-playsinline muted autoplay></video>
 
     <script>
         const video = document.getElementById('player');
-        
-        // 1. 获取 ID（优先读取 # 后面的内容，兼容旧版 ?id=）
-        let vId = window.location.hash.substring(1);
-        if (!vId) {
-            const params = new URLSearchParams(window.location.search);
-            vId = params.get('id');
-        }
+        // 获取链接中 # 后面的视频 ID
+        const videoId = window.location.hash.substring(1); 
 
-        if (vId) {
-            // 2. 拼接腾讯云直链
-            const videoUrl = `https://nfc-1390055713.cos.ap-guangzhou.myqcloud.com/${vId}.mp4`;
+        if (videoId) {
+            // 拼接腾讯云 COS 的视频直链
+            const videoUrl = `https://nfc-1390055713.cos.ap-guangzhou.myqcloud.com/${videoId}.mp4`;
             video.src = videoUrl;
-            video.style.display = 'block';
-
-            // 3. 强力触发播放
-            video.load();
-            const playPromise = video.play();
             
-            if (playPromise !== undefined) {
-                playPromise.catch(() => {
-                    // 如果被系统彻底拦截，引导用户点击页面播放
-                    document.body.addEventListener('click', () => {
-                        video.muted = false; // 点击后开启声音
-                        video.play();
-                    }, { once: true });
-                });
-            }
-        } else {
-            document.body.innerHTML = '<div style="color:white">未识别到视频 ID</div>';
+            // 尝试强力播放
+            video.play().catch(() => {
+                // 如果被拦截，引导用户点一下屏幕触发播放
+                document.body.onclick = () => { video.muted = false; video.play(); };
+            });
         }
     </script>
 </body>
