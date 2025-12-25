@@ -18,18 +18,25 @@
       justify-content: center;
       align-items: center;
       overflow: hidden;
+      color: white;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
-    video {
+    #player {
       width: 100vw;
       height: 100vh;
       object-fit: contain;
       background: #000;
+      display: none; /* 初始隐藏，加载成功再显示 */
     }
-    .error {
-      color: white;
-      font-size: 18px;
+    .message {
       text-align: center;
       padding: 20px;
+      font-size: 18px;
+      line-height: 1.5;
+      max-width: 80%;
+    }
+    .loading {
+      opacity: 0.7;
     }
   </style>
 </head>
@@ -39,46 +46,61 @@
     controls
     playsinline
     webkit-playsinline
+    x5-playsinline
     autoplay
     muted
   >
     您的浏览器不支持视频播放。
   </video>
+  <div id="message" class="message loading">加载中...</div>
 
   <script>
     const video = document.getElementById('player');
+    const messageEl = document.getElementById('message');
 
     // 从 URL 查询参数获取视频 ID（例如 ?id=abc123）
     const urlParams = new URLSearchParams(window.location.search);
     const vId = urlParams.get('id');
 
     if (!vId) {
-      // 没有 ID：显示错误
-      document.body.innerHTML = '<div class="error">无视频 ID</div>';
-    } else {
-      // 构造 COS 视频链接（请确保和你云函数上传的路径一致）
-      const videoUrl = `https://nfc-1390055713.cos.ap-guangzhou.myqcloud.com/${vId}.mp4`;
-      video.src = videoUrl;
-
-      // 尝试自动播放（必须 muted）
-      const playPromise = video.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(() => {
-          // 自动播放被拦截：用户点击后开启声音并播放
-          const handleClick = () => {
-            video.muted = false;
-            video.play().catch(() => {});
-            document.body.removeEventListener('click', handleClick);
-          };
-          document.body.addEventListener('click', handleClick);
-        });
-      }
-
-      // 视频加载错误处理
-      video.onerror = () => {
-        document.body.innerHTML = '<div class="error">视频加载失败，请检查网络或链接</div>';
-      };
+      messageEl.textContent = '❌ 未指定视频 ID';
+      messageEl.classList.remove('loading');
+      return;
     }
+
+    // 构造 COS 视频链接
+    const videoUrl = `https://nfc-1390055713.cos.ap-guangzhou.myqcloud.com/${encodeURIComponent(vId)}.mp4`;
+    video.src = videoUrl;
+
+    // 显示加载状态
+    messageEl.textContent = '正在加载视频...';
+
+    // 视频元数据加载成功 → 显示视频，隐藏提示
+    video.addEventListener('loadedmetadata', () => {
+      messageEl.style.display = 'none';
+      video.style.display = 'block';
+    });
+
+    // 尝试自动播放（必须 muted）
+    const playPromise = video.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        // 自动播放被拦截：用户点击后开启声音并播放
+        const handleClick = () => {
+          video.muted = false;
+          video.play().catch(() => {});
+          document.body.removeEventListener('click', handleClick);
+        };
+        document.body.addEventListener('click', handleClick);
+      });
+    }
+
+    // 视频加载失败
+    video.addEventListener('error', () => {
+      messageEl.textContent = '⚠️ 视频加载失败\n请检查 ID 是否正确';
+      messageEl.classList.remove('loading');
+      video.style.display = 'none';
+    });
   </script>
 </body>
 </html>
